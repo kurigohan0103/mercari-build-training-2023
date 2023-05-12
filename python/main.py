@@ -28,6 +28,10 @@ app.add_middleware(
 def root():
     return {"message": "Hello, world!"}
 
+
+
+
+
 @app.post("/items")
 def add_item(name: str = Form(...), category: str = Form(...), file: UploadFile = File(...)):
     with open(file.filename, 'rb') as f:
@@ -38,7 +42,7 @@ def add_item(name: str = Form(...), category: str = Form(...), file: UploadFile 
     shutil.copy(fname, 'images/' + sha256 + '.jpg')
     upload_dir.close()
     
-    item_tsuika = {'name': name, 'category': category, 'image_filename': filename + '.jpg'}
+    item_tsuika = {'name': name, 'category': category, 'image_filename': sha256 + '.jpg'}
     with open(filename, 'r') as f:
         read_data = json.load(f)
 
