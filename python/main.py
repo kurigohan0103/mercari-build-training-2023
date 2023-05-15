@@ -7,8 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import hashlib
 import shutil
 import json
+import sqlite3
 
 filename = "items.json"
+dbname = '/home/kurita/mercari-build-training-2023/db/mercari.sqlite3'
+
 
 
 app = FastAPI()
@@ -33,7 +36,7 @@ def root():
 
 
 @app.post("/items")
-def add_item(name: str = Form(...), category: str = Form(...), file: UploadFile = File(...)):
+def add_item(id: int = Form(...), name: str = Form(...), category: str = Form(...), file: UploadFile = File(...)):
     with open(file.filename, 'rb') as f:
         sha256 = hashlib.sha256(f.read()).hexdigest()
 
@@ -41,28 +44,61 @@ def add_item(name: str = Form(...), category: str = Form(...), file: UploadFile 
     upload_dir = open(os.path.join("images", fname),'wb+')
     shutil.copy(fname, 'images/' + sha256 + '.jpg')
     upload_dir.close()
-    
-    item_tsuika = {'name': name, 'category': category, 'image_filename': sha256 + '.jpg'}
-    with open(filename, 'r') as f:
-        read_data = json.load(f)
 
-    
-    read_data["items"].append(item_tsuika)
-   
-    
-    with open(filename, 'w') as f:
-        json.dump(read_data, f)
+    conn = sqlite3.connect(dbname)
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM items')
+    sql = 'INSERT INTO items values(' + str(id) + ', "' + name  + '", "' + category + '", "' + sha256 + '.jpg")'
+    cur.execute(sql)
+    conn.commit()
+    conn.close()
     
     
     logger.info(f"Receive item: {name}")
-    return {"message": f"item received: {name}, {category}, {sha256 + '.jpg'}"}
+    return {"message": f"item received: {id}, {name}, {category}, {sha256 + '.jpg'}"}
 
+#step4-1
+# @app.get("/items")
+# def root():
+#     conn = sqlite3.connect(dbname)
+#     cur = conn.cursor()
+#     cur.execute('SELECT * FROM items')
+#     sql_items = {"items": []}
+#     for row in cur:
+#         sql_items["items"].append(json.dumps(row))
+#     conn.close()  
+#     return sql_items
+
+#step4-3
 @app.get("/items")
 def root():
-    with open(filename, 'r') as f:
-        read_data = json.load(f)
-    return read_data
+    conn = sqlite3.connect(dbname)
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM items2 INNER JOIN category ON items2.category_id = category.id')
 
+    sql_items = {"items": []}
+    for row in cur:
+        sql_items["items"].append(json.dumps(row))
+    conn.close()
+    
+    return sql_items
+
+
+@app.get("/search")
+def item_search(keyword: str = ''):
+    
+    conn = sqlite3.connect(dbname)
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM items WHERE name = "'+ keyword + '"')
+    sql_items = {"items": []}
+    for row in cur:
+        sql_items["items"].append(json.dumps(row))
+    conn.close()
+    
+    return sql_items
+
+
+    
 @app.get("/items/{item_id}")
 def read_item(item_id: int):
     with open(filename, 'r') as f:
