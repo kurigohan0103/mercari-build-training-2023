@@ -8,8 +8,7 @@ import hashlib
 import shutil
 import json
 
-filename = "items.json"
-
+ITEMS_JSON = "items.json"
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn")
@@ -29,46 +28,64 @@ def root():
     return {"message": "Hello, world!"}
 
 
-
-
-
 @app.post("/items")
 def add_item(name: str = Form(...), category: str = Form(...), file: UploadFile = File(...)):
-    with open(file.filename, 'rb') as f:
-        sha256 = hashlib.sha256(f.read()).hexdigest()
+    
+    try:
+        with open(file.filename, 'rb') as f:
+            sha256 = hashlib.sha256(f.read()).hexdigest()
+
+    except Exception as e:
+        return str(e)
+    
+    image_name = sha256 + 'jpg'
 
     fname = file.filename
     upload_dir = open(os.path.join("images", fname),'wb+')
-    shutil.copy(fname, 'images/' + sha256 + '.jpg')
+    shutil.copy(fname, 'images/' + image_name)
     upload_dir.close()
-    
-    item_tsuika = {'name': name, 'category': category, 'image_filename': sha256 + '.jpg'}
-    with open(filename, 'r') as f:
-        read_data = json.load(f)
 
+    added_item = {'name': name, 'category': category, 'image_filename': image_name}
     
-    read_data["items"].append(item_tsuika)
-   
+    try:
+        with open(ITEMS_JSON, 'r') as f:
+            read_data = json.load(f)
+    except Exception as e:
+        return str(e)
     
-    with open(filename, 'w') as f:
-        json.dump(read_data, f)
+    read_data["items"].append(added_item)
+
+    try:   
+     with open(ITEMS_JSON, 'w') as f:
+            json.dump(read_data, f)
     
+    except Exception as e:
+        return str(e)
     
     logger.info(f"Receive item: {name}")
-    return {"message": f"item received: {name}, {category}, {sha256 + '.jpg'}"}
+    return {"message": f"item received: {name}, {category}, {image_name}"}
+    
 
 @app.get("/items")
-def root():
-    with open(filename, 'r') as f:
-        read_data = json.load(f)
-    return read_data
+def get_items():
+    try:
+        with open(ITEMS_JSON, 'r') as f:
+            read_data = json.load(f)
+        return read_data
+    
+    except Exception as e:
+        return str(e)
 
 @app.get("/items/{item_id}")
 def read_item(item_id: int):
-    with open(filename, 'r') as f:
-        read_data = json.load(f)
-    return read_data["items"][item_id-1]
+    try:
+        with open(ITEMS_JSON, 'r') as f:
+            read_data = json.load(f)
+        return read_data["items"][item_id-1]
     
+    except Exception as e:
+        return str(e)
+
 
 @app.get("/image/{image_filename}")
 async def get_image(image_filename):
