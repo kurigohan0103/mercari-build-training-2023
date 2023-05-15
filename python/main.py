@@ -9,10 +9,8 @@ import shutil
 import json
 import sqlite3
 
-filename = "items.json"
-dbname = '/home/kurita/mercari-build-training-2023/db/mercari.sqlite3'
-
-
+ITEMS_JSON = "items.json"
+ITEMS_DB = '/home/kurita/mercari-build-training-2023/db/mercari.sqlite3'
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn")
@@ -32,34 +30,36 @@ def root():
     return {"message": "Hello, world!"}
 
 
-
-
-
 @app.post("/items")
 def add_item(id: int = Form(...), name: str = Form(...), category: str = Form(...), file: UploadFile = File(...)):
-    with open(file.filename, 'rb') as f:
-        sha256 = hashlib.sha256(f.read()).hexdigest()
+    try:
+        with open(file.filename, 'rb') as f:
+            sha256 = hashlib.sha256(f.read()).hexdigest()
+
+    except Exception as e:
+        return str(e)
+    
+    image_name = sha256 + 'jpg'
 
     fname = file.filename
     upload_dir = open(os.path.join("images", fname),'wb+')
-    shutil.copy(fname, 'images/' + sha256 + '.jpg')
+    shutil.copy(fname, 'images/' + image_name)
     upload_dir.close()
 
-    conn = sqlite3.connect(dbname)
+    conn = sqlite3.connect(ITEMS_DB)
     cur = conn.cursor()
     cur.execute('SELECT * FROM items')
-    sql = 'INSERT INTO items values(' + str(id) + ', "' + name  + '", "' + category + '", "' + sha256 + '.jpg")'
+    sql = 'INSERT INTO items values(' + str(id) + ', "' + name  + '", "' + category + '", "' + image_name + '")'
     cur.execute(sql)
     conn.commit()
     conn.close()
     
-    
     logger.info(f"Receive item: {name}")
-    return {"message": f"item received: {id}, {name}, {category}, {sha256 + '.jpg'}"}
+    return {"message": f"item received: {id}, {name}, {category}, {image_name}"}
 
 #step4-1
 # @app.get("/items")
-# def root():
+# def get_items():
 #     conn = sqlite3.connect(dbname)
 #     cur = conn.cursor()
 #     cur.execute('SELECT * FROM items')
@@ -71,8 +71,8 @@ def add_item(id: int = Form(...), name: str = Form(...), category: str = Form(..
 
 #step4-3
 @app.get("/items")
-def root():
-    conn = sqlite3.connect(dbname)
+def get_items():
+    conn = sqlite3.connect(ITEMS_DB)
     cur = conn.cursor()
     cur.execute('SELECT * FROM items2 INNER JOIN category ON items2.category_id = category.id')
 
@@ -87,7 +87,7 @@ def root():
 @app.get("/search")
 def item_search(keyword: str = ''):
     
-    conn = sqlite3.connect(dbname)
+    conn = sqlite3.connect(ITEMS_DB)
     cur = conn.cursor()
     cur.execute('SELECT * FROM items WHERE name = "'+ keyword + '"')
     sql_items = {"items": []}
@@ -98,10 +98,9 @@ def item_search(keyword: str = ''):
     return sql_items
 
 
-    
 @app.get("/items/{item_id}")
 def read_item(item_id: int):
-    with open(filename, 'r') as f:
+    with open(ITEMS_JSON, 'r') as f:
         read_data = json.load(f)
     return read_data["items"][item_id-1]
     
