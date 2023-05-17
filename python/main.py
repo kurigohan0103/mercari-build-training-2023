@@ -46,30 +46,6 @@ def add_item(id: int = Form(...), name: str = Form(...), category: str = Form(..
     shutil.copy(fname, 'images/' + image_name)
     upload_dir.close()
 
-    #step3の場合(step4の場合は72〜79)
-    # try:
-    #    if os.path.isfile(ITEMS_JSON) != True:
-    #         raise HTTPException(status_code=404, detail="ITEMS_JSON not found")
-    #
-    #     with open(ITEMS_JSON, 'r') as f:
-    #         read_data = json.load(f)
-    #
-    # except HTTPException as e:
-    #     return str(e)
-    #
-    # read_data["items"].append(added_item)
-    #
-    # try:   
-    #     if os.path.isfile(ITEMS_JSON) != True:
-    #         raise HTTPException(status_code=404, detail="ITEMS_JSON not found")    
-    #    
-    #     with open(ITEMS_JSON, 'w') as f:
-    #         json.dump(read_data, f)
-    #
-    # except HTTPException as e:
-    #     return str(e)
-
-    #step4
     conn = sqlite3.connect(ITEMS_DB)
     cur = conn.cursor()
     cur.execute('SELECT * FROM items')
@@ -84,7 +60,7 @@ def add_item(id: int = Form(...), name: str = Form(...), category: str = Form(..
 #step4-1
 # @app.get("/items")
 # def get_items():
-#     conn = sqlite3.connect(dbname)
+#     conn = sqlite3.connect(ITEMS_DB)
 #     cur = conn.cursor()
 #     cur.execute('SELECT * FROM items')
 #     sql_items = {"items": []}
@@ -123,18 +99,17 @@ def item_search(keyword: str = ''):
 
 
 @app.get("/items/{item_id}")
-def read_item(item_id: int):
-    try:
-        if item_id not in ITEMS_JSON:
-            raise HTTPException(status_code=404, detail="item not found")
-        
-        with open(ITEMS_JSON, 'r') as f:
-            read_data = json.load(f)
-            
-        return read_data["items"][item_id-1]
-   
-    except HTTPException as e:
-        return str(e)
+def get_item_by_data(item_id: int):
+    
+    conn = sqlite3.connect(ITEMS_DB)
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM items')
+    sql_items = {"items": []}
+    for row in cur:
+        sql_items["items"].append(json.dumps(row))
+    conn.close()  
+
+    return sql_items["items"][item_id-1]
 
 
 @app.get("/image/{image_filename}")
