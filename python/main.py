@@ -31,12 +31,17 @@ def root():
 
 
 @app.post("/items")
-def add_item(id: int = Form(...), name: str = Form(...), category: str = Form(...), file: UploadFile = File(...)):
+def add_item(id: int = Form(...), name: str = Form(...), category: str = Form(...), file: UploadFile = File(...)):    
     try:
+        if not os.path.isfile("file.filename"):
+
+            raise HTTPException(status_code=500, detail="file not found")
+        
         with open(file.filename, 'rb') as f:
+
             sha256 = hashlib.sha256(f.read()).hexdigest()
 
-    except Exception as e:
+    except HTTPException as e:
         return str(e)
     
     image_name = sha256 + 'jpg'
@@ -48,9 +53,8 @@ def add_item(id: int = Form(...), name: str = Form(...), category: str = Form(..
 
     conn = sqlite3.connect(ITEMS_DB)
     cur = conn.cursor()
-    cur.execute('SELECT * FROM items')
-    sql = 'INSERT INTO items values(' + str(id) + ', "' + name  + '", "' + category + '", "' + image_name + '")'
-    cur.execute(sql)
+    # sql = 'INSERT INTO items values(' + str(id) + ', "' + name  + '", "' + category + '", "' + image_name + '")'
+    cur.execute("INSERT INTO items(id, name, category, image_name) values(?, ?, ?, ?);", (str(id), name, category, image_name))
     conn.commit()
     conn.close()
     
