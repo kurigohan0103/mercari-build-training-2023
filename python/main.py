@@ -33,10 +33,14 @@ def root():
 @app.post("/items")
 def add_item(id: int = Form(...), name: str = Form(...), category: str = Form(...), file: UploadFile = File(...)):    
     try:
-        if not os.path.isfile("file.filename"):
+        if not os.path.isfile(file.filename):
 
             raise HTTPException(status_code=500, detail="file not found")
         
+        if not file.filename.endswith(".jpg"):
+            
+            raise HTTPException(status_code=400, detail="Image path does not end with .jpg")
+
         with open(file.filename, 'rb') as f:
 
             sha256 = hashlib.sha256(f.read()).hexdigest()
@@ -53,7 +57,6 @@ def add_item(id: int = Form(...), name: str = Form(...), category: str = Form(..
 
     conn = sqlite3.connect(ITEMS_DB)
     cur = conn.cursor()
-    # sql = 'INSERT INTO items values(' + str(id) + ', "' + name  + '", "' + category + '", "' + image_name + '")'
     cur.execute("INSERT INTO items(id, name, category, image_name) values(?, ?, ?, ?);", (str(id), name, category, image_name))
     conn.commit()
     conn.close()
@@ -61,25 +64,11 @@ def add_item(id: int = Form(...), name: str = Form(...), category: str = Form(..
     logger.info(f"Receive item: {name}")
     return {"message": f"item received: {id}, {name}, {category}, {image_name}"}
 
-#step4-1
-# @app.get("/items")
-# def get_items():
-#     conn = sqlite3.connect(ITEMS_DB)
-#     cur = conn.cursor()
-#     cur.execute('SELECT * FROM items')
-#     sql_items = {"items": []}
-#     for row in cur:
-#         sql_items["items"].append(json.dumps(row))
-#     conn.close()  
-#     return sql_items
-
-#step4-3
 @app.get("/items")
 def get_items():
     conn = sqlite3.connect(ITEMS_DB)
     cur = conn.cursor()
-    cur.execute('SELECT * FROM items2 INNER JOIN category ON items2.category_id = category.id')
-
+    cur.execute("SELECT * FROM items2 INNER JOIN category ON items2.category_id = category.id ")
     sql_items = {"items": []}
     for row in cur:
         sql_items["items"].append(json.dumps(row))
@@ -93,7 +82,7 @@ def item_search(keyword: str = ''):
     
     conn = sqlite3.connect(ITEMS_DB)
     cur = conn.cursor()
-    cur.execute('SELECT * FROM items WHERE name = "'+ keyword + '"')
+    cur.execute('SELECT * FROM items WHERE name = ?', (keyword,))
     sql_items = {"items": []}
     for row in cur:
         sql_items["items"].append(json.dumps(row))
