@@ -1,9 +1,9 @@
 FROM python:3.10.6-alpine
 
-WORKDIR /app
+WORKDIR /home/trainee
 
-COPY db db
-COPY python python
+COPY . /db
+COPY . /python
 
 RUN addgroup -S mercari && adduser -S trainee -G mercari
 # RUN chown -R trainee:mercari /path/to/db
